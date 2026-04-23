@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "fxconverter", "fxconverter.csproj", "{CA00D072-CBD5-4076-6E0E-6452DC5D88AB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CA00D072-CBD5-4076-6E0E-6452DC5D88AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA00D072-CBD5-4076-6E0E-6452DC5D88AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA00D072-CBD5-4076-6E0E-6452DC5D88AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA00D072-CBD5-4076-6E0E-6452DC5D88AB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D5347180-43C3-4296-B5A6-8D9671017810}
+	EndGlobalSection
+EndGlobal

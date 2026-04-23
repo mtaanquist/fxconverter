@@ -1,0 +1,50 @@
+@page "/{from:regex(^[a-zA-Z]{{3}}$)}/{to:regex(^[a-zA-Z]{{3}}$)}/{amount:double}"
+@model ConverterModel
+@{
+    ViewData["Title"] = $"FX Converter";
+}
+
+<head>
+    <!-- These tags are injected directly by the C# code-behind -->
+    <meta property="og:title" content="FX Converter" />
+    <meta property="og:description" content="@Model.OgDescription" />
+    <meta property="og:image" content="@(Model.OgImage)" />
+    
+    <!-- CSS -->
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #0d1117; color: #c9d1d9; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .box { background: #161b22; padding: 2rem; border-radius: 12px; width: 300px; text-align: center; }
+        input { width: 100%; padding: 1rem; font-size: 1.5rem; background: #0d1117; border: 1px solid #30363d; color: #fff; text-align: center; }
+        .val { font-size: 2.5rem; font-weight: bold; color: #58a6ff; margin: 1rem 0; }
+        .info { font-size: 0.8rem; color: #8b949e; }
+    </style>
+</head>
+
+<body>
+    <div class="box">
+        <h2>FX</h2>
+        <!-- The initial value comes from the Server (Cached) -->
+        <input type="number" id="amount" value="@Model.Amount" oninput="updateRate(this.value)">
+        <div class="val" id="result">@(Model.HasError ? "Unavailable" : Model.ResultValue)</div>
+        <div class="info">@(Model.HasError ? "Could not fetch rate" : $"Updated: {Model.RateDate}")</div>
+    </div>
+
+    <!-- Client-side JS to handle the interactivity -->
+    <script>
+        const from = '@Model.From';
+        const to = '@Model.To';
+
+        async function updateRate(val) {
+            const resEl = document.getElementById('result');
+            resEl.textContent = "....";
+            try {
+                // Fetch the rate from our local Minimal API endpoint (which reads from cache)
+                const response = await fetch(`/api/rate/${from}/${to}`);
+                const data = await response.json();
+                resEl.textContent = (val * data.rate).toFixed(2) + ' ' + to;
+            } catch (e) {
+                resEl.textContent = "Error";
+            }
+        }
+    </script>
+</body>
