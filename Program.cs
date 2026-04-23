@@ -61,12 +61,9 @@ app.MapGet("/preview/image", async (HttpContext ctx, string from, string to, dec
         if (!cache.TryGetValue(cacheKey, out png!))
         {
             var inv = CultureInfo.InvariantCulture;
-            var toCulture = FindCultureForCurrency(toUpper);
             var converted = amount * result.Value.Rate;
             var line1 = $"{amount.ToString("0.##", inv)} {fromUpper} → {toUpper}";
-            var line2 = toCulture is not null
-                ? converted.ToString("C2", toCulture)
-                : $"{converted.ToString("N2", inv)} {toUpper}";
+            var line2 = $"{converted.ToString("N2", inv)} {toUpper}";
             var line3 = $"1 {fromUpper} = {result.Value.Rate.ToString("G6", inv)} {toUpper}  ·  {result.Value.Date}";
             png = BuildPng(line1, line2, line3, "#58a6ff");
 
@@ -118,11 +115,3 @@ app.MapRazorPages()
    .WithStaticAssets();
 
 app.Run();
-
-static CultureInfo? FindCultureForCurrency(string currencyCode) =>
-    CultureInfo.GetCultures(CultureTypes.SpecificCultures)
-        .FirstOrDefault(c =>
-        {
-            try { return new RegionInfo(c.Name).ISOCurrencySymbol == currencyCode; }
-            catch { return false; }
-        });

@@ -1,21 +1,9 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Collections.Concurrent;
 using System.Globalization;
+using System.Threading;
 
 public class ConverterModel : PageModel
-{
-    private static readonly ConcurrentDictionary<string, CultureInfo?> _cultureByCurrency = new();
-
-    private static CultureInfo? FindCultureForCurrency(string currencyCode) =>
-        _cultureByCurrency.GetOrAdd(currencyCode, code =>
-            CultureInfo.GetCultures(CultureTypes.SpecificCultures)
-                .FirstOrDefault(c =>
-                {
-                    try { return new RegionInfo(c.Name).ISOCurrencySymbol == code; }
-                    catch { return false; }
-                }));
-
-    private readonly IExchangeRateService _rateService;
+{    private readonly IExchangeRateService _rateService;
 
     public ConverterModel(IExchangeRateService rateService)
     {
@@ -38,8 +26,8 @@ public class ConverterModel : PageModel
         To = to.ToUpperInvariant();
         Amount = amount;
 
-        var toCulture = FindCultureForCurrency(To);
-        CultureTag = toCulture?.Name ?? string.Empty;
+        var requestCulture = Thread.CurrentThread.CurrentCulture;
+        CultureTag = requestCulture.Name;
 
         var result = await _rateService.GetRateAsync(From, To);
         if (result is null)
@@ -50,9 +38,7 @@ public class ConverterModel : PageModel
         }
 
         var converted = amount * result.Value.Rate;
-        ResultValue = toCulture is not null
-            ? converted.ToString("C2", toCulture)
-            : $"{converted:N2} {To}";
+        ResultValue = $"{converted.ToString("N2", requestCulture)} {To}";
         RateDate = result.Value.Date;
 
         OgDescription = $"{amount:0.##} {From} = {ResultValue} (Updated: {RateDate})";
