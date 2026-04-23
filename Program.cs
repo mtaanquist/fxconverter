@@ -1,3 +1,5 @@
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Caching.Memory;
 using SkiaSharp;
 
@@ -24,6 +26,12 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new RequestCulture(CultureInfo.InvariantCulture),
+    RequestCultureProviders = [new AcceptLanguageHeaderRequestCultureProvider()]
+});
 
 app.UseRouting();
 
@@ -52,10 +60,11 @@ app.MapGet("/preview/image", async (HttpContext ctx, string from, string to, dec
         var cacheKey = $"png:{fromUpper}:{toUpper}:{amount}:{result.Value.Date}";
         if (!cache.TryGetValue(cacheKey, out png!))
         {
+            var inv = CultureInfo.InvariantCulture;
             var converted = amount * result.Value.Rate;
-            var line1 = $"{amount:0.##} {fromUpper} → {toUpper}";
-            var line2 = $"{converted:N2} {toUpper}";
-            var line3 = $"1 {fromUpper} = {result.Value.Rate:G6} {toUpper}  ·  {result.Value.Date}";
+            var line1 = $"{amount.ToString("0.##", inv)} {fromUpper} → {toUpper}";
+            var line2 = $"{converted.ToString("N2", inv)} {toUpper}";
+            var line3 = $"1 {fromUpper} = {result.Value.Rate.ToString("G6", inv)} {toUpper}  ·  {result.Value.Date}";
             png = BuildPng(line1, line2, line3, "#58a6ff");
 
             var midnight = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(1), TimeSpan.Zero);
@@ -70,7 +79,7 @@ app.MapGet("/preview/image", async (HttpContext ctx, string from, string to, dec
 
 static byte[] BuildPng(string line1, string line2, string line3, string accentHex)
 {
-    const int W = 520, H = 160;
+    const int W = 1040, H = 320;
     using var surface = SKSurface.Create(new SKImageInfo(W, H));
     var canvas = surface.Canvas;
 
@@ -80,21 +89,21 @@ static byte[] BuildPng(string line1, string line2, string line3, string accentHe
     var gray   = SKColor.Parse("#8b949e");
 
     using var barPaint = new SKPaint { Color = accent };
-    canvas.DrawRect(new SKRect(0, 0, 4, H), barPaint);
+    canvas.DrawRect(new SKRect(0, 0, 8, H), barPaint);
 
     var tf     = SKTypeface.FromFamilyName("DejaVu Sans") ?? SKTypeface.Default;
     var tfBold = SKTypeface.FromFamilyName("DejaVu Sans", SKFontStyle.Bold) ?? tf;
 
-    using var smallFont = new SKFont(tf, 14);
-    using var largeFont = new SKFont(tfBold, 50);
-    using var tinyFont  = new SKFont(tf, 12);
+    using var smallFont = new SKFont(tf, 28);
+    using var largeFont = new SKFont(tfBold, 100);
+    using var tinyFont  = new SKFont(tf, 24);
 
     using var grayPaint   = new SKPaint { Color = gray,   IsAntialias = true };
     using var accentPaint = new SKPaint { Color = accent, IsAntialias = true };
 
-    canvas.DrawText(line1, 24, 36,  smallFont, grayPaint);
-    canvas.DrawText(line2, 24, 98,  largeFont, accentPaint);
-    canvas.DrawText(line3, 24, 138, tinyFont,  grayPaint);
+    canvas.DrawText(line1, 48, 72,  smallFont, grayPaint);
+    canvas.DrawText(line2, 48, 196, largeFont, accentPaint);
+    canvas.DrawText(line3, 48, 276, tinyFont,  grayPaint);
 
     using var img  = surface.Snapshot();
     using var data = img.Encode(SKEncodedImageFormat.Png, 100);

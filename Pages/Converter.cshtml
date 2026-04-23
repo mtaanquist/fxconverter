@@ -11,8 +11,8 @@
     <meta property="og:description" content="@Model.OgDescription" />
     <meta property="og:image" content="@Model.OgImage" />
     <meta property="og:image:type" content="image/png" />
-    <meta property="og:image:width" content="520" />
-    <meta property="og:image:height" content="160" />
+    <meta property="og:image:width" content="1040" />
+    <meta property="og:image:height" content="320" />
     <meta name="twitter:card" content="summary_large_image" />
     
     <!-- CSS -->
@@ -29,7 +29,7 @@
     <div class="box">
         <h2>FX</h2>
         <!-- The initial value comes from the Server (Cached) -->
-        <input type="number" id="amount" value="@Model.Amount" oninput="updateRate(this.value)">
+        <input type="number" id="amount" value="@Model.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture)" oninput="updateRate(this.value)">
         <div class="val" id="result">@(Model.HasError ? "Unavailable" : Model.ResultValue)</div>
         <div class="info">@(Model.HasError ? "Could not fetch rate" : $"Updated: {Model.RateDate}")</div>
     </div>
@@ -38,6 +38,7 @@
     <script>
         const from = '@Model.From';
         const to = '@Model.To';
+        const locale = '@Model.CultureTag' || undefined;
 
         async function updateRate(val) {
             const resEl = document.getElementById('result');
@@ -46,7 +47,8 @@
                 // Fetch the rate from our local Minimal API endpoint (which reads from cache)
                 const response = await fetch(`/api/rate/${from}/${to}`);
                 const data = await response.json();
-                resEl.textContent = (val * data.rate).toFixed(2) + ' ' + to;
+                const converted = val * data.rate;
+                resEl.textContent = converted.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + to;
             } catch (e) {
                 resEl.textContent = "Error";
             }
