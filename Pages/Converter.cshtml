@@ -48,7 +48,7 @@
                 const response = await fetch(`/api/rate/${from}/${to}`);
                 const data = await response.json();
                 const converted = val * data.rate;
-                resEl.textContent = converted.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + to;
+                resEl.textContent = converted.toLocaleString(locale || undefined, { style: 'currency', currency: to });
             } catch (e) {
                 resEl.textContent = "Error";
             }
