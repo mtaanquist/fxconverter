@@ -33,6 +33,6 @@ public class ConverterModel : PageModel
         RateDate = result.Value.Date;
 
         OgDescription = $"{amount:0.##} {From} = {ResultValue} (Updated: {RateDate})";
-        OgImage = $"{Request.Scheme}://{Request.Host}/preview/image?from={From}&to={To}&amount={amount}";
+        OgImage = $"{Request.Scheme}://{Request.Host}/preview/image?from={From}&to={To}&amount={amount}&date={RateDate}";
     }
 }

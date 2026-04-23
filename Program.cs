@@ -1,3 +1,5 @@
+using SkiaSharp;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -28,16 +30,16 @@ app.MapGet("/api/rate/{from}/{to}", async (string from, string to, IExchangeRate
     return Results.Json(new { rate = result.Value.Rate, date = result.Value.Date });
 });
 
-app.MapGet("/preview/image", async (string from, string to, double amount, IExchangeRateService rateService) =>
+app.MapGet("/preview/image", async (HttpContext ctx, string from, string to, double amount, IExchangeRateService rateService) =>
 {
     var fromUpper = from.ToUpperInvariant();
     var toUpper = to.ToUpperInvariant();
     var result = await rateService.GetRateAsync(fromUpper, toUpper);
 
-    string svg;
+    byte[] png;
     if (result is null)
     {
-        svg = BuildSvg($"{amount} {fromUpper} → {toUpper}", "Error fetching rate", "Could not retrieve exchange rate", "#e05252");
+        png = BuildPng($"{amount} {fromUpper} → {toUpper}", "Error fetching rate", "Could not retrieve exchange rate", "#e05252");
     }
     else
     {
@@ -45,24 +47,46 @@ app.MapGet("/preview/image", async (string from, string to, double amount, IExch
         var line1 = $"{amount:0.##} {fromUpper} → {toUpper}";
         var line2 = $"{converted:N2} {toUpper}";
         var line3 = $"1 {fromUpper} = {result.Value.Rate:G6} {toUpper}  ·  {result.Value.Date}";
-        svg = BuildSvg(line1, line2, line3, "#58a6ff");
+        png = BuildPng(line1, line2, line3, "#58a6ff");
     }
 
-    return Results.Content(svg, "image/svg+xml");
+    ctx.Response.Headers.CacheControl = "public, max-age=3600";
+    ctx.Response.ContentType = "image/png";
+    await ctx.Response.Body.WriteAsync(png);
 });
 
-static string BuildSvg(string line1, string line2, string line3, string accentColor) => $"""
-    <svg xmlns="http://www.w3.org/2000/svg" width="520" height="160" viewBox="0 0 520 160">
-      <rect width="520" height="160" rx="12" fill="#161b22"/>
-      <rect x="0" y="0" width="4" height="160" rx="2" fill="{accentColor}"/>
-      <text x="24" y="36" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-            font-size="15" fill="#8b949e">{System.Web.HttpUtility.HtmlEncode(line1)}</text>
-      <text x="24" y="98" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-            font-size="52" font-weight="700" fill="{accentColor}">{System.Web.HttpUtility.HtmlEncode(line2)}</text>
-      <text x="24" y="138" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-            font-size="13" fill="#8b949e">{System.Web.HttpUtility.HtmlEncode(line3)}</text>
-    </svg>
-    """;
+static byte[] BuildPng(string line1, string line2, string line3, string accentHex)
+{
+    const int W = 520, H = 160;
+    using var surface = SKSurface.Create(new SKImageInfo(W, H));
+    var canvas = surface.Canvas;
+
+    canvas.Clear(SKColor.Parse("#161b22"));
+
+    var accent = SKColor.Parse(accentHex);
+    var gray   = SKColor.Parse("#8b949e");
+
+    using var barPaint = new SKPaint { Color = accent };
+    canvas.DrawRect(new SKRect(0, 0, 4, H), barPaint);
+
+    var tf     = SKTypeface.FromFamilyName("DejaVu Sans") ?? SKTypeface.Default;
+    var tfBold = SKTypeface.FromFamilyName("DejaVu Sans", SKFontStyle.Bold) ?? tf;
+
+    using var smallFont = new SKFont(tf, 14);
+    using var largeFont = new SKFont(tfBold, 50);
+    using var tinyFont  = new SKFont(tf, 12);
+
+    using var grayPaint   = new SKPaint { Color = gray,   IsAntialias = true };
+    using var accentPaint = new SKPaint { Color = accent, IsAntialias = true };
+
+    canvas.DrawText(line1, 24, 36,  smallFont, grayPaint);
+    canvas.DrawText(line2, 24, 98,  largeFont, accentPaint);
+    canvas.DrawText(line3, 24, 138, tinyFont,  grayPaint);
+
+    using var img  = surface.Snapshot();
+    using var data = img.Encode(SKEncodedImageFormat.Png, 100);
+    return data.ToArray();
+}
 
 app.MapStaticAssets();
 app.MapRazorPages()
