@@ -1,6 +1,7 @@
-@page "/{from:regex(^[a-zA-Z]{{3}}$)}/{to:regex(^[a-zA-Z]{{3}}$)}/{amount:double}"
+@page "/{from:regex(^[a-zA-Z]{{3}}$)}/{to:regex(^[a-zA-Z]{{3}}$)}/{amount:decimal}"
 @model ConverterModel
 @{
+    Layout = null;
     ViewData["Title"] = $"FX Converter";
 }
 

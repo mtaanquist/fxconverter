@@ -1,10 +1,16 @@
+using Microsoft.Extensions.Caching.Memory;
 using SkiaSharp;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
-builder.Services.AddHttpClient();
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("frankfurter", c =>
+{
+    c.BaseAddress = new Uri("https://api.frankfurter.dev/");
+    c.Timeout = TimeSpan.FromSeconds(5);
+});
 builder.Services.AddSingleton<IExchangeRateService, ExchangeRateService>();
 
 var app = builder.Build();
@@ -23,14 +29,14 @@ app.UseRouting();
 
 app.UseAuthorization();
 
-app.MapGet("/api/rate/{from}/{to}", async (string from, string to, IExchangeRateService rateService) =>
+app.MapGet("/api/rate/{from:regex(^[a-zA-Z]{{3}}$)}/{to:regex(^[a-zA-Z]{{3}}$)}", async (string from, string to, IExchangeRateService rateService) =>
 {
     var result = await rateService.GetRateAsync(from, to);
     if (result is null) return Results.NotFound();
     return Results.Json(new { rate = result.Value.Rate, date = result.Value.Date });
 });
 
-app.MapGet("/preview/image", async (HttpContext ctx, string from, string to, double amount, IExchangeRateService rateService) =>
+app.MapGet("/preview/image", async (HttpContext ctx, string from, string to, decimal amount, IExchangeRateService rateService, IMemoryCache cache) =>
 {
     var fromUpper = from.ToUpperInvariant();
     var toUpper = to.ToUpperInvariant();
@@ -43,14 +49,21 @@ app.MapGet("/preview/image", async (HttpContext ctx, string from, string to, dou
     }
     else
     {
-        var converted = amount * result.Value.Rate;
-        var line1 = $"{amount:0.##} {fromUpper} → {toUpper}";
-        var line2 = $"{converted:N2} {toUpper}";
-        var line3 = $"1 {fromUpper} = {result.Value.Rate:G6} {toUpper}  ·  {result.Value.Date}";
-        png = BuildPng(line1, line2, line3, "#58a6ff");
+        var cacheKey = $"png:{fromUpper}:{toUpper}:{amount}:{result.Value.Date}";
+        if (!cache.TryGetValue(cacheKey, out png!))
+        {
+            var converted = amount * result.Value.Rate;
+            var line1 = $"{amount:0.##} {fromUpper} → {toUpper}";
+            var line2 = $"{converted:N2} {toUpper}";
+            var line3 = $"1 {fromUpper} = {result.Value.Rate:G6} {toUpper}  ·  {result.Value.Date}";
+            png = BuildPng(line1, line2, line3, "#58a6ff");
+
+            var midnight = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(1), TimeSpan.Zero);
+            cache.Set(cacheKey, png, new MemoryCacheEntryOptions { AbsoluteExpiration = midnight });
+        }
     }
 
-    ctx.Response.Headers.CacheControl = "public, max-age=3600";
+    ctx.Response.Headers.CacheControl = "public, max-age=86400";
     ctx.Response.ContentType = "image/png";
     await ctx.Response.Body.WriteAsync(png);
 });
